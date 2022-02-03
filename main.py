@@ -49,6 +49,7 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
         cv2.waitKey(0)
 
 def learn(folder):
+    number =0
     for filename in glob.glob(f'{folder}/*.xml'):
         doc = minidom.parse(filename)
         n = 0
@@ -65,11 +66,12 @@ def learn(folder):
                 val = [xmin, xmax, ymin, ymax]
                 values.append(val)
         if n>0:
+            number+=1
             print(f'{filename[17:len(filename)-4]}.png')
             print(n)
             for v in values:
                 print(v[0], v[1], v[2], v[3])
-
+    print(number)
 
 def main(folder):
     for filename in glob.glob(f'{folder}/*.png'):
@@ -108,5 +110,5 @@ if __name__ == '__main__':
     #         shutil.copy2(filename, 'trainAnnotations')
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
-    learn("trainAnnotations")
+    learn("testAnnotations")
     main("testImages")

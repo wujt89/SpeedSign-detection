@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import xml.etree.ElementTree as ET
 import glob
+from xml.dom import minidom
 import shutil
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
@@ -17,12 +18,12 @@ def loadAndCirclePhoto(path):
     actual_img = cv2.imread(path)
     img = cv2.medianBlur(img, 5)
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 20,
-                               param1=300, param2=0.85, minRadius=20, maxRadius=200)
+                               param1=300, param2=0.97, minRadius=10, maxRadius=200)
     print(circles)
     is_empty = False
     if circles is None:
         is_empty = True
-    return circles, actual_img, is_empty
+    checkAndDrawRedCircles(circles, actual_img, is_empty)
 
 
 def checkAndDrawRedCircles(circles, actual_img, is_empty):
@@ -31,13 +32,13 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
         height, width = actual_img.shape[:2]
         blank_image = np.zeros((height, width, 3), dtype="uint8")
         for i in circles[0, :]:
-            x = i[0] - i[2] - 5
-            y = i[1] - i[2] - 5
-            x2 = i[0] + i[2] + 5
-            y2 = i[1] + i[2] + 5
+            x = 0 if ((i[0] - i[2]-5 <0) or (i[0] - i[2]-5>width)) else i[0] - i[2]-5
+            y = 0 if ((i[1] - i[2]-5 <0) or (i[1] - i[2]-5>height)) else i[1] - i[2]-5
+            x2 = width if ((i[0] + i[2]+5 <0) or (i[0] + i[2]+5>width)) else i[0] + i[2]+5
+            y2 = height if ((i[1] + i[2]+5 <0) or (i[1] + i[2]+5>height)) else i[1] + i[2]+5
             cv2.rectangle(actual_img, (x, y), (x2, y2), (0, 255, 0), 1)
             roi = actual_img[y:y2, x:x2]
-            boundaries = [([17, 15, 40], [100, 100, 200])]
+            boundaries = [([30, 30, 50], [150, 150, 255])]
             for (lower, upper) in boundaries:
                 lower = np.array(lower, dtype="uint8")
                 upper = np.array(upper, dtype="uint8")
@@ -47,10 +48,33 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
         cv2.imshow("images", np.hstack([actual_img, blank_image]))
         cv2.waitKey(0)
 
+def learn(folder):
+    for filename in glob.glob(f'{folder}/*.xml'):
+        doc = minidom.parse(filename)
+        n = 0
+        values = []
+        objects = doc.getElementsByTagName("object")
+        for obj in objects:
+            name = obj.getElementsByTagName("name")[0]
+            if name.firstChild.data == 'speedlimit':
+                n+=1
+                xmin = obj.getElementsByTagName("xmin")[0].firstChild.data
+                ymin = obj.getElementsByTagName("ymin")[0].firstChild.data
+                xmax = obj.getElementsByTagName("xmax")[0].firstChild.data
+                ymax = obj.getElementsByTagName("ymax")[0].firstChild.data
+                val = [xmin, xmax, ymin, ymax]
+                values.append(val)
+        if n>0:
+            print(f'{filename[17:len(filename)-4]}.png')
+            print(n)
+            for v in values:
+                print(v[0], v[1], v[2], v[3])
 
-def main():
-    circlesFound, img, is_empty = loadAndCirclePhoto('images/road51.png')
-    checkAndDrawRedCircles(circlesFound, img, is_empty)
+
+def main(folder):
+    for filename in glob.glob(f'{folder}/*.png'):
+        print(filename)
+        loadAndCirclePhoto(filename)
 
 
 if __name__ == '__main__':
@@ -84,5 +108,5 @@ if __name__ == '__main__':
     #         shutil.copy2(filename, 'trainAnnotations')
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
-
-    main()
+    learn("trainAnnotations")
+    main("testImages")

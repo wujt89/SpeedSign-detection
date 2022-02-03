@@ -7,12 +7,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 import pandas
 
-boundaries = [([17, 15, 80], [100, 100, 200])]
+
 def loadAndCirclePhoto(path):
     img = cv2.imread(path, 0)
     actual_img = cv2.imread(path)
     img = cv2.medianBlur(img, 5)
-    circles = [0]
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 20,
                                param1=300, param2=0.85, minRadius=10, maxRadius=200)
     print(circles)
@@ -34,6 +33,7 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
             y2 = i[1] + i[2] + 5
             cv2.rectangle(actual_img, (x, y), (x2, y2), (0, 255, 0), 1)
             roi = actual_img[y:y2, x:x2]
+            boundaries = [([17, 15, 80], [100, 100, 200])]
             for (lower, upper) in boundaries:
                 lower = np.array(lower, dtype="uint8")
                 upper = np.array(upper, dtype="uint8")

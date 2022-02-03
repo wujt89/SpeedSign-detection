@@ -2,10 +2,14 @@ import os
 import random
 import numpy as np
 import cv2
+import xml.etree.ElementTree as ET
+import glob
+import shutil
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 import pandas
+
 
 
 def loadAndCirclePhoto(path):
@@ -13,7 +17,7 @@ def loadAndCirclePhoto(path):
     actual_img = cv2.imread(path)
     img = cv2.medianBlur(img, 5)
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 20,
-                               param1=300, param2=0.85, minRadius=10, maxRadius=200)
+                               param1=300, param2=0.85, minRadius=20, maxRadius=200)
     print(circles)
     is_empty = False
     if circles is None:
@@ -33,7 +37,7 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
             y2 = i[1] + i[2] + 5
             cv2.rectangle(actual_img, (x, y), (x2, y2), (0, 255, 0), 1)
             roi = actual_img[y:y2, x:x2]
-            boundaries = [([17, 15, 80], [100, 100, 200])]
+            boundaries = [([17, 15, 40], [100, 100, 200])]
             for (lower, upper) in boundaries:
                 lower = np.array(lower, dtype="uint8")
                 upper = np.array(upper, dtype="uint8")
@@ -45,9 +49,40 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
 
 
 def main():
-    circlesFound, img, is_empty = loadAndCirclePhoto('images/road426.png')
+    circlesFound, img, is_empty = loadAndCirclePhoto('images/road51.png')
     checkAndDrawRedCircles(circlesFound, img, is_empty)
 
 
 if __name__ == '__main__':
+    # Grouping pictures and xml files
+    # for i in range(876):
+    #     file = ET.parse(f"annotations/road{i}.xml")
+    #     root = file.getroot()
+    #     elemList = []
+    #     found = 0
+    #     for elem in root.iter("name"):
+    #         elemList.append(elem.text)
+    #     for el in elemList:
+    #         if el == "speedlimit" :
+    #             found = 1
+    #             shutil.copy2(f'annotations/road{i}.xml', 'isSpeedAnnotations')
+    #             shutil.copy2(f'annotations/road{i}.png', 'isSpeedLimit')
+    #     if found == 0:
+    #         shutil.copy2(f'annotations/road{i}.xml', 'notSpeedAnnotations')
+    #         shutil.copy2(f'annotations/road{i}.png', 'notSpeedLimit')
+    # Creating folders for training and testing
+    # val = 0
+    # for filename in glob.glob('notSpeedLimit/*.png'):
+    #     val = val+1
+    #     if val<148:
+    #         shutil.copy2(filename, 'train')
+    #     else:
+    #         shutil.copy2(filename, 'test')
+    # for filename in glob.glob('notSpeedAnnotations/*.xml'):
+    #     val = val+1
+    #     if val<148:
+    #         shutil.copy2(filename, 'trainAnnotations')
+    #     else:
+    #         shutil.copy2(filename, 'testAnnotations')
+
     main()

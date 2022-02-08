@@ -12,7 +12,6 @@ from sklearn.metrics import confusion_matrix
 import pandas
 
 
-
 def loadAndCirclePhoto(path):
     img = cv2.imread(path, 0)
     actual_img = cv2.imread(path)
@@ -48,8 +47,9 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
         cv2.imshow("images", np.hstack([actual_img, blank_image]))
         cv2.waitKey(0)
 
+
 def learn(folder):
-    number =0
+    number = 0
     for filename in glob.glob(f'{folder}/*.xml'):
         doc = minidom.parse(filename)
         n = 0
@@ -67,11 +67,12 @@ def learn(folder):
                 values.append(val)
         if n>0:
             number+=1
-            print(f'{filename[17:len(filename)-4]}.png')
+            print(f'{filename[16:len(filename)-4]}.png')
             print(n)
             for v in values:
                 print(v[0], v[1], v[2], v[3])
     print(number)
+
 
 def main(folder):
     for filename in glob.glob(f'{folder}/*.png'):

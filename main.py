@@ -2,13 +2,12 @@ import os
 import random
 import numpy as np
 import cv2
-import xml.etree.ElementTree as ET
 import glob
 from xml.dom import minidom
 import shutil
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
+from sklearn import metrics
 import pandas
 
 
@@ -18,18 +17,18 @@ def loadAndCirclePhoto(path):
     img = cv2.medianBlur(img, 5)
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 20,
                                param1=300, param2=0.97, minRadius=10, maxRadius=200)
-    print(circles)
     is_empty = False
     if circles is None:
         is_empty = True
-    checkAndDrawRedCircles(circles, actual_img, is_empty)
+    return checkAndDrawRedCircles(circles, actual_img, is_empty)
 
 
 def checkAndDrawRedCircles(circles, actual_img, is_empty):
     if not is_empty:
         circles = np.uint16(np.around(circles))
         height, width = actual_img.shape[:2]
-        blank_image = np.zeros((height, width, 3), dtype="uint8")
+        # blank_image = np.zeros((height, width, 3), dtype="uint8")
+        rois = []
         for i in circles[0, :]:
             x = 0 if ((i[0] - i[2] - 5 < 0) or (i[0] - i[2] - 5 > width)) else i[0] - i[2] - 5
             y = 0 if ((i[1] - i[2] - 5 < 0) or (i[1] - i[2] - 5 > height)) else i[1] - i[2] - 5
@@ -37,15 +36,17 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
             y2 = height if ((i[1] + i[2] + 5 < 0) or (i[1] + i[2] + 5 > height)) else i[1] + i[2] + 5
             cv2.rectangle(actual_img, (x, y), (x2, y2), (0, 255, 0), 1)
             roi = actual_img[y:y2, x:x2]
-            boundaries = [([30, 30, 50], [150, 150, 255])]
-            for (lower, upper) in boundaries:
-                lower = np.array(lower, dtype="uint8")
-                upper = np.array(upper, dtype="uint8")
-                mask = cv2.inRange(roi, lower, upper)
-                output = cv2.bitwise_and(roi, roi, mask=mask)
-                blank_image[y:y2, x:x2] = output
-        cv2.imshow("images", np.hstack([actual_img, blank_image]))
-        cv2.waitKey(0)
+            rois.append(roi)
+        #     boundaries = [([30, 30, 50], [150, 150, 255])]
+        #     for (lower, upper) in boundaries:
+        #         lower = np.array(lower, dtype="uint8")
+        #         upper = np.array(upper, dtype="uint8")
+        #         mask = cv2.inRange(roi, lower, upper)
+        #         output = cv2.bitwise_and(roi, roi, mask=mask)
+        #         blank_image[y:y2, x:x2] = output
+        # cv2.imshow("images", np.hstack([actual_img, blank_image]))
+        # cv2.waitKey(0)
+        return rois
 
 
 def load(xmlFolder):
@@ -64,7 +65,7 @@ def load(xmlFolder):
             ymin = obj.getElementsByTagName("ymin")[0].firstChild.data
             xmax = obj.getElementsByTagName("xmax")[0].firstChild.data
             ymax = obj.getElementsByTagName("ymax")[0].firstChild.data
-            if typeOfSign == "speedlimit" and ((int(xmax)-int(xmin))>(int(height)/10)):
+            if typeOfSign == "speedlimit" and ((int(xmax) - int(xmin)) > (int(height) / 10)):
                 label = '1'
             boxes.append({"typeOfSign": typeOfSign, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
         data.append({'imageName': imgName, 'height': height, 'width': width, "label": label, "boxes": boxes})
@@ -73,7 +74,7 @@ def load(xmlFolder):
 
 def learn(data):
     for element in data:
-        bow = cv2.BOWKMeansTrainer(4)
+        bow = cv2.BOWKMeansTrainer(37)
         sift = cv2.SIFT_create()
         img = cv2.imread(f'trainImages/{element["imageName"]}')
         boxes = element['boxes']
@@ -119,23 +120,35 @@ def extract(data, path):
     vocabulary = np.load('voc.npy')
     bow.setVocabulary(vocabulary)
     for element in data:
-        for box in element["boxes"]:
-            img = cv2.imread(f'{path}{element["imageName"]}')
-            roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
-            kp = sift.detect(roi, None)
-            desc = bow.compute(roi, kp)
-            if desc is not None:
-                element.update({'desc': desc})
-            else:
-                element.update({'desc': np.zeros((1, 4))})
-            if box["typeOfSign"] == 'speedlight':
-                break
+        rois = loadAndCirclePhoto(f'{path}{element["imageName"]}')
+        if rois is not None:
+            for roi in rois:
+                kp = sift.detect(roi, None)
+                desc = bow.compute(roi, kp)
+                if desc is not None:
+                    element.update({'desc': desc})
+                else:
+                    element.update({'desc': np.zeros((1, 37))})
+        else:
+            element.update({'desc': np.zeros((1, 37))})
+
+        # for box in element["boxes"]:
+        #     img = cv2.imread(f'{path}{element["imageName"]}')
+        #     roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
+        #     kp = sift.detect(roi, None)
+        #     desc = bow.compute(roi, kp)
+        #     if desc is not None:
+        #         element.update({'desc': desc})
+        #     else:
+        #         element.update({'desc': np.zeros((1, 37))})
+        #     if box["typeOfSign"] == 'speedlight':
+        #         break
     return data
 
 
 def train(data):
     clf = RandomForestClassifier(100)
-    x_matrix = np.empty((1, 4))
+    x_matrix = np.empty((1, 37))
     y_vector = []
     for element in data:
         y_vector.append(element['label'])
@@ -145,14 +158,25 @@ def train(data):
 
 
 def predict(rf, data):
-    for sample in data:
-        sample.update({'label_pred': rf.predict(sample['desc'])[0]})
-        print(sample["imageName"])
-        print(sample['label_pred'])
-        img = cv2.imread(f"testImages/{sample['imageName']}")
+    for element in data:
+        element.update({'label_pred': rf.predict(element['desc'])[0]})
+        print(element["imageName"])
+        print(element['label_pred'])
+        img = cv2.imread(f"testImages/{element['imageName']}")
         cv2.imshow("roi", img)
         cv2.waitKey(0)
     return data
+
+
+def evaluate(data):
+    y_pred = []
+    y_real = []
+    for sample in data:
+        y_pred.append(sample['label_pred'])
+        y_real.append(sample['label'])
+
+    print("Accuracy:", metrics.accuracy_score(y_real, y_pred))
+    return
 
 
 def main(folder):
@@ -205,6 +229,5 @@ if __name__ == '__main__':
     test_data = extract(test_data, "testImages/")
     print("testing")
     predict(rf, test_data)
+    evaluate(test_data)
     print("done")
-
-    # main("testImages")

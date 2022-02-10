@@ -58,19 +58,22 @@ def load(xmlFolder):
         width = doc.getElementsByTagName("width")[0].firstChild.data
         boxes = []
         for obj in objects:
+            label = '0'
             typeOfSign = obj.getElementsByTagName("name")[0].firstChild.data
             xmin = obj.getElementsByTagName("xmin")[0].firstChild.data
             ymin = obj.getElementsByTagName("ymin")[0].firstChild.data
             xmax = obj.getElementsByTagName("xmax")[0].firstChild.data
             ymax = obj.getElementsByTagName("ymax")[0].firstChild.data
+            if typeOfSign == "speedlimit" and ((int(xmax)-int(xmin))>(int(height)/10)):
+                label = '1'
             boxes.append({"typeOfSign": typeOfSign, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
-        data.append({'imageName': imgName, 'height': height, 'width': width, "label": "1", "boxes": boxes})
+        data.append({'imageName': imgName, 'height': height, 'width': width, "label": label, "boxes": boxes})
     return data
 
 
 def learn(data):
     for element in data:
-        bow = cv2.BOWKMeansTrainer(37)
+        bow = cv2.BOWKMeansTrainer(4)
         sift = cv2.SIFT_create()
         img = cv2.imread(f'trainImages/{element["imageName"]}')
         boxes = element['boxes']
@@ -79,8 +82,8 @@ def learn(data):
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             kp = sift.detect(gray, None)
             kp, desc = sift.compute(gray, kp)
-            roi = cv2.drawKeypoints(gray, kp, roi)
-            img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
+            # roi = cv2.drawKeypoints(gray, kp, roi)
+            # img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
             if desc is not None:
                 bow.add(desc)
         # cv2.imshow("roi", img)
@@ -110,26 +113,29 @@ def learn(data):
 
 
 def extract(data, path):
-    dictSize = 37
     sift = cv2.SIFT_create()
     flann = cv2.FlannBasedMatcher_create()
     bow = cv2.BOWImgDescriptorExtractor(sift, flann)
     vocabulary = np.load('voc.npy')
     bow.setVocabulary(vocabulary)
     for element in data:
-        img = cv2.imread(f'{path}{element["imageName"]}')
-        kp = sift.detect(img, None)
-        desc = bow.compute(img, kp)
-        if desc is not None:
-            element.update({'desc': desc})
-        else:
-            element.update({'desc': np.zeros((1, 37))})
+        for box in element["boxes"]:
+            img = cv2.imread(f'{path}{element["imageName"]}')
+            roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
+            kp = sift.detect(roi, None)
+            desc = bow.compute(roi, kp)
+            if desc is not None:
+                element.update({'desc': desc})
+            else:
+                element.update({'desc': np.zeros((1, 4))})
+            if box["typeOfSign"] == 'speedlight':
+                break
     return data
 
 
 def train(data):
-    clf = RandomForestClassifier(37)
-    x_matrix = np.empty((1, 37))
+    clf = RandomForestClassifier(100)
+    x_matrix = np.empty((1, 4))
     y_vector = []
     for element in data:
         y_vector.append(element['label'])
@@ -141,8 +147,11 @@ def train(data):
 def predict(rf, data):
     for sample in data:
         sample.update({'label_pred': rf.predict(sample['desc'])[0]})
-    # ------------------
-
+        print(sample["imageName"])
+        print(sample['label_pred'])
+        img = cv2.imread(f"testImages/{sample['imageName']}")
+        cv2.imshow("roi", img)
+        cv2.waitKey(0)
     return data
 
 
@@ -183,7 +192,6 @@ if __name__ == '__main__':
     #         shutil.copy2(filename, 'trainAnnotations')
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
-
 
     train_data = load("trainAnnotations")
     test_data = load("testAnnotations")

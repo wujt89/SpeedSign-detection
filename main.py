@@ -171,18 +171,12 @@ def predict(rf, data):
 def evaluate(data):
     y_pred = []
     y_real = []
-    for sample in data:
-        y_pred.append(sample['label_pred'])
-        y_real.append(sample['label'])
+    for element in data:
+        y_pred.append(element['label_pred'])
+        y_real.append(element['label'])
 
     print("Accuracy:", metrics.accuracy_score(y_real, y_pred))
     return
-
-
-def main(folder):
-    for filename in glob.glob(f'{folder}/*.png'):
-        print(filename)
-        loadAndCirclePhoto(filename)
 
 
 if __name__ == '__main__':

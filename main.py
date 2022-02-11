@@ -12,11 +12,20 @@ import pandas
 
 
 def loadAndCirclePhoto(path):
-    img = cv2.imread(path, 0)
+
     actual_img = cv2.imread(path)
-    img = cv2.medianBlur(img, 5)
-    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 20,
-                               param1=300, param2=0.97, minRadius=10, maxRadius=200)
+    img = cv2.imread(path)
+    # boundaries = [([20, 20, 0], [150, 150, 255])]
+    # for (lower, upper) in boundaries:
+    #     lower = np.array(lower, dtype="uint8")
+    #     upper = np.array(upper, dtype="uint8")
+    #     mask = cv2.inRange(img, lower, upper)
+    #     img = cv2.bitwise_and(img, img, mask=mask)
+    # cv2.imshow("images", np.hstack([actual_img, img]))
+    # cv2.waitKey(0)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 50,
+                               param1=300, param2=0.95, minRadius=15, maxRadius=200)
     is_empty = False
     if circles is None:
         is_empty = True
@@ -27,31 +36,23 @@ def checkAndDrawRedCircles(circles, actual_img, is_empty):
     if not is_empty:
         circles = np.uint16(np.around(circles))
         height, width = actual_img.shape[:2]
-        # blank_image = np.zeros((height, width, 3), dtype="uint8")
         rois = []
         for i in circles[0, :]:
-            x = 0 if ((i[0] - i[2] - 5 < 0) or (i[0] - i[2] - 5 > width)) else i[0] - i[2] - 5
-            y = 0 if ((i[1] - i[2] - 5 < 0) or (i[1] - i[2] - 5 > height)) else i[1] - i[2] - 5
-            x2 = width if ((i[0] + i[2] + 5 < 0) or (i[0] + i[2] + 5 > width)) else i[0] + i[2] + 5
-            y2 = height if ((i[1] + i[2] + 5 < 0) or (i[1] + i[2] + 5 > height)) else i[1] + i[2] + 5
+            x = 0 if ((i[0] - i[2] < 0) or (i[0] - i[2] > width)) else i[0] - i[2]
+            y = 0 if ((i[1] - i[2] < 0) or (i[1] - i[2] > height)) else i[1] - i[2]
+            x2 = width if ((i[0] + i[2] < 0) or (i[0] + i[2] > width)) else i[0] + i[2]
+            y2 = height if ((i[1] + i[2] < 0) or (i[1] + i[2] > height)) else i[1] + i[2]
             cv2.rectangle(actual_img, (x, y), (x2, y2), (0, 255, 0), 1)
+            # cv2.imshow("images", actual_img)
+            # cv2.waitKey(0)
             roi = actual_img[y:y2, x:x2]
             rois.append(roi)
-        #     boundaries = [([30, 30, 50], [150, 150, 255])]
-        #     for (lower, upper) in boundaries:
-        #         lower = np.array(lower, dtype="uint8")
-        #         upper = np.array(upper, dtype="uint8")
-        #         mask = cv2.inRange(roi, lower, upper)
-        #         output = cv2.bitwise_and(roi, roi, mask=mask)
-        #         blank_image[y:y2, x:x2] = output
-        # cv2.imshow("images", np.hstack([actual_img, blank_image]))
-        # cv2.waitKey(0)
         return rois
 
 
-def load(xmlFolder):
+def load(trainOrTest, xmlFolder):
     data = []
-    for filename in glob.glob(f'{xmlFolder}/*.xml'):
+    for filename in glob.glob(f'{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/{trainOrTest}/{xmlFolder}/*.xml'):
         doc = minidom.parse(filename)
         imgName = doc.getElementsByTagName("filename")[0].firstChild.data
         objects = doc.getElementsByTagName("object")
@@ -67,28 +68,48 @@ def load(xmlFolder):
             ymax = obj.getElementsByTagName("ymax")[0].firstChild.data
             if typeOfSign == "speedlimit" and ((int(xmax) - int(xmin)) > (int(height) / 10)):
                 label = '1'
+            else:
+                typeOfSign = 'others'
             boxes.append({"typeOfSign": typeOfSign, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
+        if label == '0':
+            xmin = random.randrange(int(width)-100)
+            xmax = xmin + random.randrange(20, 50)
+            ymin = random.randrange(int(height)-100)
+            ymax = ymin + random.randrange(20, 50)
+            boxes.append({"typeOfSign": 'others', "xmin": str(xmin), "xmax": str(xmax), "ymin": str(ymin), "ymax": str(ymax)})
         data.append({'imageName': imgName, 'height': height, 'width': width, "label": label, "boxes": boxes})
     return data
 
 
 def learn(data):
+    bow = cv2.BOWKMeansTrainer(128)
+    sift = cv2.SIFT_create()
     for element in data:
-        bow = cv2.BOWKMeansTrainer(37)
-        sift = cv2.SIFT_create()
-        img = cv2.imread(f'trainImages/{element["imageName"]}')
+        img = cv2.imread(f'{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/{element["imageName"]}')
         boxes = element['boxes']
         for box in boxes:
             roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
-            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            kp = sift.detect(gray, None)
-            kp, desc = sift.compute(gray, kp)
+            kp = sift.detect(roi, None)
+            kp, desc = sift.compute(roi, kp)
             # roi = cv2.drawKeypoints(gray, kp, roi)
             # img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
             if desc is not None:
                 bow.add(desc)
-        # cv2.imshow("roi", img)
-        # cv2.waitKey(0)
+            if box['typeOfSign'] == 'speedlimit':
+                w = random.randrange(1, 4)
+                height, width = roi.shape[:2]
+                croppedw = random.randrange(int(width / 2) + 5, width - 10)
+                croppedh = random.randrange(int(height / 2) + 5, height - 10)
+                if w == 1:
+                    roi = roi[0:croppedh, 0:width]
+                if w == 2:
+                    roi = roi[0:height, 0:croppedw]
+                kp = sift.detect(roi, None)
+                kp, desc = sift.compute(roi, kp)
+                if desc is not None:
+                    bow.add(desc)
+                # cv2.imshow("roi", roi)
+                # cv2.waitKey(0)
     vocabulary = bow.cluster()
     np.save('voc.npy', vocabulary)
 
@@ -120,7 +141,9 @@ def extract(data, path):
     vocabulary = np.load('voc.npy')
     bow.setVocabulary(vocabulary)
     for element in data:
+        # 10/10 - 85%
         rois = loadAndCirclePhoto(f'{path}{element["imageName"]}')
+        desces = []
         if rois is not None:
             for roi in rois:
                 kp = sift.detect(roi, None)
@@ -128,10 +151,11 @@ def extract(data, path):
                 if desc is not None:
                     element.update({'desc': desc})
                 else:
-                    element.update({'desc': np.zeros((1, 37))})
+                    element.update({'desc': np.zeros((1, 128))})
         else:
-            element.update({'desc': np.zeros((1, 37))})
+            element.update({'desc': np.zeros((1, 128))})
 
+        # # classify - 100%
         # for box in element["boxes"]:
         #     img = cv2.imread(f'{path}{element["imageName"]}')
         #     roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
@@ -140,15 +164,15 @@ def extract(data, path):
         #     if desc is not None:
         #         element.update({'desc': desc})
         #     else:
-        #         element.update({'desc': np.zeros((1, 37))})
+        #         element.update({'desc': np.zeros((1, 128))})
         #     if box["typeOfSign"] == 'speedlight':
         #         break
     return data
 
 
 def train(data):
-    clf = RandomForestClassifier(100)
-    x_matrix = np.empty((1, 37))
+    clf = RandomForestClassifier(128)
+    x_matrix = np.empty((1, 128))
     y_vector = []
     for element in data:
         y_vector.append(element['label'])
@@ -160,11 +184,11 @@ def train(data):
 def predict(rf, data):
     for element in data:
         element.update({'label_pred': rf.predict(element['desc'])[0]})
-        print(element["imageName"])
-        print(element['label_pred'])
-        img = cv2.imread(f"testImages/{element['imageName']}")
-        cv2.imshow("roi", img)
-        cv2.waitKey(0)
+        # print(element["imageName"])
+        # print(element['label_pred'])
+        # img = cv2.imread(f"testImages/{element['imageName']}")
+        # cv2.imshow("roi", img)
+        # cv2.waitKey(0)
     return data
 
 
@@ -211,16 +235,17 @@ if __name__ == '__main__':
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
 
-    train_data = load("trainAnnotations")
-    test_data = load("testAnnotations")
+    print("loading")
+    train_data = load("train", "annotations")
+    test_data = load("test", "annotations")
     print("learn")
     learn(train_data)
     print("extracting train")
-    train_data = extract(train_data, "trainImages/")
+    train_data = extract(train_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
     print("train")
     rf = train(train_data)
     print("extracting test")
-    test_data = extract(test_data, "testImages/")
+    test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
     print("testing")
     predict(rf, test_data)
     evaluate(test_data)

@@ -26,6 +26,7 @@ def loadAndCirclePhoto(path):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 50,
                                param1=300, param2=0.95, minRadius=15, maxRadius=200)
+    print(circles)
     is_empty = False
     if circles is None:
         is_empty = True
@@ -70,14 +71,14 @@ def load(trainOrTest, xmlFolder):
                 label = '1'
             else:
                 typeOfSign = 'others'
-            boxes.append({"typeOfSign": typeOfSign, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
+            boxes.append({"typeOfSign": typeOfSign, "label": label, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
         if label == '0':
             xmin = random.randrange(int(width)-100)
             xmax = xmin + random.randrange(20, 50)
             ymin = random.randrange(int(height)-100)
             ymax = ymin + random.randrange(20, 50)
-            boxes.append({"typeOfSign": 'others', "xmin": str(xmin), "xmax": str(xmax), "ymin": str(ymin), "ymax": str(ymax)})
-        data.append({'imageName': imgName, 'height': height, 'width': width, "label": label, "boxes": boxes})
+            boxes.append({"typeOfSign": 'others', "label": label, "xmin": str(xmin), "xmax": str(xmax), "ymin": str(ymin), "ymax": str(ymax)})
+        data.append({'imageName': imgName, 'height': height, 'width': width, "boxes": boxes})
     return data
 
 
@@ -88,14 +89,14 @@ def learn(data):
         img = cv2.imread(f'{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/{element["imageName"]}')
         boxes = element['boxes']
         for box in boxes:
-            roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
-            kp = sift.detect(roi, None)
-            kp, desc = sift.compute(roi, kp)
-            # roi = cv2.drawKeypoints(gray, kp, roi)
-            # img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
-            if desc is not None:
-                bow.add(desc)
             if box['typeOfSign'] == 'speedlimit':
+                roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
+                kp = sift.detect(roi, None)
+                kp, desc = sift.compute(roi, kp)
+                # roi = cv2.drawKeypoints(gray, kp, roi)
+                # img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
+                if desc is not None:
+                    bow.add(desc)
                 w = random.randrange(1, 4)
                 height, width = roi.shape[:2]
                 croppedw = random.randrange(int(width / 2) + 5, width - 10)
@@ -134,6 +135,31 @@ def learn(data):
     # print(number)
 
 
+def extractSinglePhotoClassify(name, coordinates):
+    sift = cv2.SIFT_create()
+    flann = cv2.FlannBasedMatcher_create()
+    bow = cv2.BOWImgDescriptorExtractor(sift, flann)
+    vocabulary = np.load('voc.npy')
+    bow.setVocabulary(vocabulary)
+    img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{name}")
+    roi = img[coordinates[0]:coordinates[1], coordinates[2]:coordinates[3]]
+    kp = sift.detect(roi, None)
+    desc = bow.compute(roi, kp)
+    return desc
+
+
+def extractSinglePhotoDetect(name, coordinates):
+    sift = cv2.SIFT_create()
+    flann = cv2.FlannBasedMatcher_create()
+    bow = cv2.BOWImgDescriptorExtractor(sift, flann)
+    vocabulary = np.load('voc.npy')
+    bow.setVocabulary(vocabulary)
+    img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{name}")
+    roi = img[coordinates[0]:coordinates[1], coordinates[2]:coordinates[3]]
+    kp = sift.detect(roi, None)
+    desc = bow.compute(roi, kp)
+    return desc
+
 def extract(data, path):
     sift = cv2.SIFT_create()
     flann = cv2.FlannBasedMatcher_create()
@@ -155,18 +181,16 @@ def extract(data, path):
         else:
             element.update({'desc': np.zeros((1, 128))})
 
-        # # classify - 100%
+        # classify - 100%
         # for box in element["boxes"]:
         #     img = cv2.imread(f'{path}{element["imageName"]}')
         #     roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
         #     kp = sift.detect(roi, None)
         #     desc = bow.compute(roi, kp)
         #     if desc is not None:
-        #         element.update({'desc': desc})
+        #         box.update({'desc': desc})
         #     else:
-        #         element.update({'desc': np.zeros((1, 128))})
-        #     if box["typeOfSign"] == 'speedlight':
-        #         break
+        #         box.update({'desc': np.zeros((1, 128))})
     return data
 
 
@@ -175,15 +199,24 @@ def train(data):
     x_matrix = np.empty((1, 128))
     y_vector = []
     for element in data:
-        y_vector.append(element['label'])
-        x_matrix = np.vstack((x_matrix, element['desc']))
+        for box in element['boxes']:
+            y_vector.append(box['label'])
+            x_matrix = np.vstack((x_matrix, box['desc']))
     clf.fit(x_matrix[1:], y_vector)
     return clf
+
+def predictSinglePhoto(rf, desc):
+    label = rf.predict(desc)
+    if int(label) > 0:
+        print("speedlimit")
+    else:
+        print("others")
 
 
 def predict(rf, data):
     for element in data:
-        element.update({'label_pred': rf.predict(element['desc'])[0]})
+        for box in element["boxes"]:
+            box.update({'label_pred': rf.predict(box['desc'])[0]})
         # print(element["imageName"])
         # print(element['label_pred'])
         # img = cv2.imread(f"testImages/{element['imageName']}")
@@ -196,8 +229,9 @@ def evaluate(data):
     y_pred = []
     y_real = []
     for element in data:
-        y_pred.append(element['label_pred'])
-        y_real.append(element['label'])
+        for box in element['boxes']:
+            y_pred.append(box['label_pred'])
+            y_real.append(box['label'])
 
     print("Accuracy:", metrics.accuracy_score(y_real, y_pred))
     return
@@ -238,15 +272,43 @@ if __name__ == '__main__':
     print("loading")
     train_data = load("train", "annotations")
     test_data = load("test", "annotations")
-    print("learn")
+    print("learning")
     learn(train_data)
     print("extracting train")
     train_data = extract(train_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
-    print("train")
+    print("training")
     rf = train(train_data)
-    print("extracting test")
-    test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
-    print("testing")
-    predict(rf, test_data)
-    evaluate(test_data)
-    print("done")
+    print("ready for action")
+    command = input("classify or detect: ")
+    if command.lower() == 'classify':
+        numberOfFiles = input("number of files: ")
+        n = 0
+        while n < int(numberOfFiles):
+            fileName = input("file name: ")
+            numberOfSigns = input("number of signs: ")
+            for i in range(int(numberOfSigns)):
+                coordinatesArray = []
+                coordinates = input("insert coordinates: ")
+                coordinateString = ''
+                for letter in coordinates:
+                    if letter == ' ':
+                        coordinatesArray.append(int(coordinateString))
+                        coordinateString = ''
+                    coordinateString = coordinateString + letter
+                coordinatesArray.append(int(coordinateString))
+                print(coordinatesArray)
+                img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{fileName}")
+                cv2.rectangle(img, (coordinatesArray[0], coordinatesArray[2]), (coordinatesArray[1], coordinatesArray[3]), (0, 255, 0), 1)
+                cv2.imshow("images", img)
+                cv2.waitKey(0)
+                desc = extractSinglePhotoClassify(fileName, coordinatesArray)
+                predictSinglePhoto(rf, desc)
+    elif command.lower() == 'detect':
+        photoName = input("photo name: ")
+
+    # print("extracting test")
+    # test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
+    # print("testing")
+    # predict(rf, test_data)
+    # evaluate(test_data)
+    # print("done")

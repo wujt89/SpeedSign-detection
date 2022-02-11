@@ -18,6 +18,7 @@ def checkCircle(x1, y1, x2, y2, r1, r2):
     else:
         return False
 
+
 def loadAndCirclePhoto(path):
 
     actual_img = cv2.imread(path)
@@ -163,18 +164,6 @@ def extractSinglePhotoClassify(name, coordinates):
     return desc
 
 
-def extractSinglePhotoDetect(name, coordinates):
-    sift = cv2.SIFT_create()
-    flann = cv2.FlannBasedMatcher_create()
-    bow = cv2.BOWImgDescriptorExtractor(sift, flann)
-    vocabulary = np.load('voc.npy')
-    bow.setVocabulary(vocabulary)
-    img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{name}")
-    roi = img[coordinates[0]:coordinates[1], coordinates[2]:coordinates[3]]
-    kp = sift.detect(roi, None)
-    desc = bow.compute(roi, kp)
-    return desc
-
 def extractDetect(data, path):
     sift = cv2.SIFT_create()
     flann = cv2.FlannBasedMatcher_create()
@@ -227,6 +216,7 @@ def train(data):
     clf.fit(x_matrix[1:], y_vector)
     return clf
 
+
 def predictSinglePhotoClassify(rf, desc):
     label = rf.predict(desc)
     if int(label) > 0:
@@ -253,6 +243,7 @@ def predictDetect(rf, data):
             print(f'{boxy[i][0]} {boxy[i][1]} {boxy[i][2]} {boxy[i][3]}')
     return data
 
+
 def predict(rf, data):
     for element in data:
         for box in element["boxes"]:
@@ -263,6 +254,13 @@ def predict(rf, data):
 def evaluate(data):
     y_pred = []
     y_real = []
+    for sample in data:
+        y_pred.append(sample['label_pred'])
+        y_real.append(sample['label'])
+    for element in data:
+        y_pred.append(element['label_pred'])
+        y_real.append(element['label'])
+
 
 def evaluateDetect(data):
     for element in data:
@@ -271,11 +269,11 @@ def evaluateDetect(data):
             for box in element['boxesFound']:
                 img = cv2.rectangle(img, (int(box['xmin']), int(box['ymin'])), (int(box['xmax']), int(box['ymax'])),
                               (0, 255, 0), 1)
-                print(box['label_pred'])
-        cv2.imshow("images", img)
-        cv2.waitKey(0)
+        # cv2.imshow("images", img)
+        # cv2.waitKey(0)
 
     return
+
 
 if __name__ == '__main__':
     # Grouping pictures and xml files
@@ -337,8 +335,8 @@ if __name__ == '__main__':
                 coordinatesArray.append(int(coordinateString))
                 img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{fileName}")
                 cv2.rectangle(img, (coordinatesArray[0], coordinatesArray[2]), (coordinatesArray[1], coordinatesArray[3]), (0, 255, 0), 1)
-                cv2.imshow("images", img)
-                cv2.waitKey(0)
+                # cv2.imshow("images", img)
+                # cv2.waitKey(0)
                 desc = extractSinglePhotoClassify(fileName, coordinatesArray)
                 predictSinglePhotoClassify(rf, desc)
     elif command.lower() == 'detect':

@@ -89,10 +89,10 @@ def load(trainOrTest, xmlFolder):
                 typeOfSign = 'others'
             boxes.append({"typeOfSign": typeOfSign, "label": label, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
         if label == '0':
-            xmin = random.randrange(int(width)-100)
-            xmax = xmin + random.randrange(20, 50)
-            ymin = random.randrange(int(height)-100)
-            ymax = ymin + random.randrange(20, 50)
+            xmin = random.randrange(0, int(width) - 150)
+            ymin = random.randrange(0, int(height)-150)
+            xmax = random.randrange(xmin+20, xmin+120)
+            ymax = random.randrange(ymin+20, ymin+120)
             boxes.append({"typeOfSign": 'others', "label": label, "xmin": str(xmin), "xmax": str(xmax), "ymin": str(ymin), "ymax": str(ymax)})
         data.append({'imageName': imgName, 'height': height, 'width': width, "boxes": boxes})
     return data
@@ -109,8 +109,6 @@ def learn(data):
                 roi = img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])]
                 kp = sift.detect(roi, None)
                 kp, desc = sift.compute(roi, kp)
-                # roi = cv2.drawKeypoints(gray, kp, roi)
-                # img[int(box["ymin"]):int(box["ymax"]), int(box["xmin"]):int(box["xmax"])] = roi
                 if desc is not None:
                     bow.add(desc)
                 w = random.randrange(1, 4)
@@ -125,30 +123,19 @@ def learn(data):
                 kp, desc = sift.compute(roi, kp)
                 if desc is not None:
                     bow.add(desc)
-                # cv2.imshow("roi", roi)
-                # cv2.waitKey(0)
+            # else:
+            #     xmin = random.randrange(0, width-150)
+            #     ymin = random.randrange(0, height-150)
+            #     xmax = random.randrange(xmin+20, width)
+            #     ymax = random.randrange(ymin+20, height)
+            #     roi = img[ymin:ymax, xmin:xmax]
+            #     kp = sift.detect(roi, None)
+            #     kp, desc = sift.compute(roi, kp)
+            #     if desc is not None:
+            #         bow.add(desc)
+
     vocabulary = bow.cluster()
     np.save('voc.npy', vocabulary)
-
-    #     values = []
-    #     objects = doc.getElementsByTagName("object")
-    #     for obj in objects:
-    #         name = obj.getElementsByTagName("name")[0]
-    #         if name.firstChild.data == 'speedlimit':
-    #             n += 1
-    #             xmin = obj.getElementsByTagName("xmin")[0].firstChild.data
-    #             ymin = obj.getElementsByTagName("ymin")[0].firstChild.data
-    #             xmax = obj.getElementsByTagName("xmax")[0].firstChild.data
-    #             ymax = obj.getElementsByTagName("ymax")[0].firstChild.data
-    #             val = [xmin, xmax, ymin, ymax]
-    #             values.append(val)
-    #     if n>0:
-    #         number+=1
-    #         print(f'{filename[16:len(filename)-4]}.png')
-    #         print(n)
-    #         for v in values:
-    #             print(v[0], v[1], v[2], v[3])
-    # print(number)
 
 
 def extractSinglePhotoClassify(name, coordinates):
@@ -263,15 +250,22 @@ def evaluate(data):
 
 
 def evaluateDetect(data):
+    # counter = 0
     for element in data:
         img = cv2.imread(f'{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{element["imageName"]}')
         if element["boxesFound"] is not None:
             for box in element['boxesFound']:
                 img = cv2.rectangle(img, (int(box['xmin']), int(box['ymin'])), (int(box['xmax']), int(box['ymax'])),
                               (0, 255, 0), 1)
-        # cv2.imshow("images", img)
-        # cv2.waitKey(0)
-
+    #             if box['label_pred'] == '1':
+    #                 counter = counter + 1
+    # print("found ", counter)
+    # counter = 0
+    # for element in data:
+    #     for box in element["boxes"]:
+    #         if box['label'] == '1':
+    #             counter = counter + 1
+    # print("to be found ", counter)
     return
 
 
@@ -315,17 +309,17 @@ if __name__ == '__main__':
     train_data = extract(train_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
     # print("training")
     rf = train(train_data)
-    # print("ready for action")
-    command = input("classify or detect: ")
+    print("Im trained and ready to go")
+    command = input()  # "classify or detect: "
     if command.lower() == 'classify':
-        numberOfFiles = input("number of files: ")
+        numberOfFiles = input()  # "number of files: "
         n = 0
         while n < int(numberOfFiles):
-            fileName = input("file name: ")
-            numberOfSigns = input("number of signs: ")
+            fileName = input()  # "file name: "
+            numberOfSigns = input()  # "number of signs: "
             for i in range(int(numberOfSigns)):
                 coordinatesArray = []
-                coordinates = input("insert coordinates: ")
+                coordinates = input()  # "insert coordinates: "
                 coordinateString = ''
                 for letter in coordinates:
                     if letter == ' ':
@@ -335,8 +329,8 @@ if __name__ == '__main__':
                 coordinatesArray.append(int(coordinateString))
                 img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{fileName}")
                 cv2.rectangle(img, (coordinatesArray[0], coordinatesArray[2]), (coordinatesArray[1], coordinatesArray[3]), (0, 255, 0), 1)
-                # cv2.imshow("images", img)
-                # cv2.waitKey(0)
+                cv2.imshow("images", img)
+                cv2.waitKey(0)
                 desc = extractSinglePhotoClassify(fileName, coordinatesArray)
                 predictSinglePhotoClassify(rf, desc)
     elif command.lower() == 'detect':

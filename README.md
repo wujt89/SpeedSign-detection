@@ -7,9 +7,9 @@ Raport z wykonanego zadania chiałbym przedstawić jako opis wszystkich funkcji 
 3. CheckAndDrawRedCircles():
     Pierwszą rzeczą jaką robi ta funkcja to przefiltrowanie kółek za pomocą funkcji z punktu pierwszego. Następnie z przefiltorwane kólka zamieniane są na kwadraty,     a wartości początkowe oraz końcowe tych kwadratów zapisywane są w zmiennej boxes która jest wartością zwracaną.
 4. load():
-    Jak sama nazwa wskazuję służy ona do załadowania wszystkich interesujących nas informacji na temat obiektu z pliku xml, który jest podany jako argument. Oprócz tego w przypadku gdy obraz został zaznaczony jako zły, losowane jest inne dowolne miejsce na obrazie, aby algorytm nauczył się również, że drzewa czy niebo to też nie to czego szukamy.
+    Jak sama nazwa wskazuję służy ona do załadowania wszystkich interesujących nas informacji na temat obiektu z pliku xml, który jest podany jako argument. Oprócz     tego w przypadku gdy obraz został zaznaczony jako zły, losowane jest inne dowolne miejsce na obrazie, aby algorytm nauczył się również, że drzewa czy niebo to       też nie to czego szukamy.
 5. learn():
-    Funkcja uczenia się. Uczy się na podstawie wycinków wyznaczonych przez wartości boxów w pliku xml. Oprócz tego w przypadkuznalezienia znaku który jest dobry, jest on losowo przycinany tak, aby zachowane było przynajmniej 50% jego oryginalnej powierzchni. Dzięki temu spełniona zostanie zasada IOU.
+    Funkcja uczenia się. Uczy się na podstawie wycinków wyznaczonych przez wartości boxów w pliku xml. Oprócz tego w przypadkuznalezienia znaku który jest dobry,       jest on losowo przycinany tak, aby zachowane było przynajmniej 50% jego oryginalnej powierzchni. Dzięki temu spełniona zostanie zasada IOU.
 6. extractSinglePhotoClassify():
     Na podtsawie tej funkcji tłumaczony jest słownik na deskryptor na podstawie podanego zdjęcia dla pojedynczego obrazu.
 7. extractDetect():
@@ -27,6 +27,7 @@ Raport z wykonanego zadania chiałbym przedstawić jako opis wszystkich funkcji 
 13. extract():
     Funkcja robi to samo co extractSingleClassify jednakże dla całego zbioru treningowego.
     
+ALGORYTM:
 #1 załadowanie danych treningowych oraz testowych
 
 #2 Uczenie modelu na podstawie danych treningowych

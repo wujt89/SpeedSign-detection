@@ -28,9 +28,15 @@ Raport z wykonanego zadania chiałbym przedstawić jako opis wszystkich funkcji 
     Funkcja robi to samo co extractSingleClassify jednakże dla całego zbioru treningowego.
     
 #1 załadowanie danych treningowych oraz testowych
+
 #2 Uczenie modelu na podstawie danych treningowych
+
 #3 Wyciąganie danych ze słownika dla zbioru treningowego
+
 #4 Trenowanie modelu
+
 #5 Na konsoli pokazuję sie informacja, ≥że trening i uczenie przebiegło w sposób prawidłowy, i oczekiwane jest wprowadzenie przez użytkownika wartości 'classify' lub 'detect'.
+
 #6 W przypadku wprowadzenia 'classify' przebiega proces klasyfikacji oczekujemy na wprowadzenie przez użytkownika ilości plików jakie chcemy sprawdzić, następnie nazwy pierwszego pliku, następnie ilości pól jakie chcemy sprawdzić na danym obrazie, następnie współrzędne pierwszego pola. I tak w pętli.
+
 #7 w przypoadku wpisania 'detect' przebiega proces detekcji na podstawie obrazów w podanym w instukcji folderze.

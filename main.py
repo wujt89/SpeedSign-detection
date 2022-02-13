@@ -239,7 +239,7 @@ def predictDetect(rf, data):
         if element["boxesFound"] is not None:
             for box in element["boxesFound"]:
                 if box is not None:
-                    box.update({'label_pred': rf.predict(box['desc'])[0]})
+                    box.update({'labelPred': rf.predict(box['desc'])[0]})
                     if int(rf.predict(box['desc'])[0]) > 0:
                         n += 1
                         boxy.append([box['xmin'], box['xmax'], box['ymin'], box['ymax']])
@@ -254,8 +254,8 @@ def predictDetect(rf, data):
 def predictUniversal(rf, data):
     for element in data:
         for box in element["boxes"]:
-            box.update({'label_pred': rf.predict(box['desc'])[0]})
-            # print(box["label_pred"])
+            box.update({'labelPred': rf.predict(box['desc'])[0]})
+            # print(box["labelPred"])
             # fileName = element['imageName']
             # img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{fileName}")
             # img = cv2.rectangle(img, (int(box['xmin']), int(box['ymin'])), (int(box['xmax']), int(box['ymax'])),
@@ -267,13 +267,13 @@ def predictUniversal(rf, data):
 
 
 def evaluate(data):
-    y_pred = []
-    y_real = []
+    yPred = []
+    yReal = []
     for element in data:
         for box in element['boxes']:
-            y_pred.append(box['label_pred'])
-            y_real.append(box['label'])
-    print("Accuracy:", metrics.accuracy_score(y_real, y_pred))
+            yPred.append(box['labelPred'])
+            yReal.append(box['label'])
+    print("Accuracy:", metrics.accuracy_score(yReal, yPred))
     return
 
 
@@ -285,7 +285,7 @@ def evaluateDetect(data):
             for box in element['boxesFound']:
                 img = cv2.rectangle(img, (int(box['xmin']), int(box['ymin'])), (int(box['xmax']), int(box['ymax'])),
                                     (0, 255, 0), 1)
-                if box['label_pred'] == '1':
+                if box['labelPred'] == '1':
                     counter = counter + 1
     print("found ", counter)
     counter = 0
@@ -330,11 +330,11 @@ if __name__ == '__main__':
     #         shutil.copy2(filename, 'testAnnotations')
 
     print("starting")
-    train_data = load("train", "annotations")
-    test_data = load("test", "annotations")
-    learn(train_data)
-    train_data = extract(train_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
-    rf = train(train_data)
+    trainData = load("train", "annotations")
+    testData = load("test", "annotations")
+    learn(trainData)
+    trainData = extract(trainData, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
+    rf = train(trainData)
     print("Im trained and ready to go, input what to do (classify or detect)")
     # print("extracting test")
     # test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
@@ -365,6 +365,6 @@ if __name__ == '__main__':
                 desc = extractSinglePhotoClassify(fileName, coordinatesArray)
                 predictSinglePhotoClassify(rf, desc)
     elif command.lower() == 'detect':
-        test_data = extractDetect(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
-        predictDetect(rf, test_data)
-        evaluateDetect(test_data)
+        testData = extractDetect(testData, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
+        predictDetect(rf, testData)
+        # evaluateDetect(testData)

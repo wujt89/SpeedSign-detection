@@ -33,7 +33,7 @@ def loadAndCirclePhoto(path):
     valueMin = width if width < height else height
     valueMax = width if width > height else height
     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT_ALT, 1, 30,
-                               param1=300, param2=0.85, minRadius=int(valueMin / 20), maxRadius=int(valueMax / 2))
+                               param1=300, param2=0.85, minRadius=int(valueMin / 20), maxRadius=int(valueMax / 2)+50)
     is_empty = False
     if circles is None:
         is_empty = True
@@ -251,7 +251,7 @@ def predictDetect(rf, data):
     return data
 
 
-def predict(rf, data):
+def predictUniversal(rf, data):
     for element in data:
         for box in element["boxes"]:
             box.update({'label_pred': rf.predict(box['desc'])[0]})
@@ -328,16 +328,14 @@ if __name__ == '__main__':
     #         shutil.copy2(filename, 'trainAnnotations')
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
-    # print("loading")
+
+    print("starting")
     train_data = load("train", "annotations")
     test_data = load("test", "annotations")
-    # print("learning")
     learn(train_data)
-    # print("extracting train")
     train_data = extract(train_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
-    # print("training")
     rf = train(train_data)
-    print("Im trained and ready to go")
+    print("Im trained and ready to go, input what to do (classify or detect)")
     # print("extracting test")
     # test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
     # print("testing")

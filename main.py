@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 import pandas
+from getpass import getpass
 
 
 def checkCircle(x1, y1, x2, y2, r1, r2):
@@ -155,14 +156,9 @@ def extractSinglePhotoClassify(name, coordinates):
     vocabulary = np.load('voc.npy')
     bow.setVocabulary(vocabulary)
     img = cv2.imread(f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/{name}")
-    cv2.imshow("images", img)
-    cv2.waitKey(0)
     roi = img[coordinates[2]:coordinates[3], coordinates[0]:coordinates[1]]
-    cv2.imshow("images", roi)
-    cv2.waitKey(0)
     kp = sift.detect(roi, None)
     desc = bow.compute(roi, kp)
-    print(desc)
     if desc is None:
         desc = np.zeros((1, 128))
     return desc
@@ -287,13 +283,11 @@ def evaluateDetect(data):
                                     (0, 255, 0), 1)
                 if box['labelPred'] == '1':
                     counter = counter + 1
-    print("found ", counter)
     counter = 0
     for element in data:
         for box in element["boxes"]:
             if box['label'] == '1':
                 counter = counter + 1
-    print("to be found ", counter)
     return
 
 
@@ -329,13 +323,11 @@ if __name__ == '__main__':
     #     else:
     #         shutil.copy2(filename, 'testAnnotations')
 
-    print("starting")
     trainData = load("train", "annotations")
     testData = load("test", "annotations")
     learn(trainData)
     trainData = extract(trainData, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/train/images/")
     rf = train(trainData)
-    print("Im trained and ready to go, input what to do (classify or detect)")
     # print("extracting test")
     # test_data = extract(test_data, f"{os.path.abspath(os.path.join(os.getcwd(), os.pardir))}/test/images/")
     # print("testing")

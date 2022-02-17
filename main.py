@@ -11,6 +11,24 @@ from sklearn import metrics
 import pandas
 from getpass import getpass
 
+# TODO Jakość kodu i raport (3/4)
+
+
+# TODO Skuteczność klasyfikacji 0.481 (0/4)
+# TODO [0.00, 0.50) - 0.0
+# TODO [0.50, 0.55) - 0.5
+# TODO [0.55, 0.60) - 1.0
+# TODO [0.60, 0.65) - 1.5
+# TODO [0.65, 0.70) - 2.0
+# TODO [0.70, 0.75) - 2.5
+# TODO [0.75, 0.80) - 3.0
+# TODO [0.80, 0.85) - 3.5
+# TODO [0.85, 1.00) - 4.0
+
+
+# TODO Skuteczność detekcji mAP = 0.554 (5/6) (2/2)
+
+# TODO max(5, 0+2) = 5
 
 def checkCircle(x1, y1, x2, y2, r1, r2):
     distSq = (((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2))) ** (.5)
@@ -92,6 +110,8 @@ def load(trainOrTest, xmlFolder):
             else:
                 typeOfSign = 'others'
             boxes.append({"typeOfSign": typeOfSign, "label": label, "xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax})
+        # TODO Zmienna 'label' moze byc nie zainicjowana.
+        # TODO Dobrze by bylo gdyby liczba przykladow negatywnych i pozytywnych byla podobna.
         if label == '0':
             xmin = random.randrange(0, int(width) - 150)
             ymin = random.randrange(0, int(height) - 150)
@@ -118,12 +138,14 @@ def learn(data):
                     bow.add(desc)
                 w = random.randrange(1, 2)
                 height, width = roi.shape[:2]
+                # TODO Dodawanie takich specyficznych przypadkow moze wcale nie pomoc uczeniu.
                 croppedw = random.randrange(int(width / 2) + 1, width - 1)
                 croppedh = random.randrange(int(height / 2) + 1, height - 1)
                 if w == 1:
                     roir = roi[0:croppedh, 0:width]
                 if w == 2:
                     roir = roi[0:height, 0:croppedw]
+                # TODO Z tego mozna by zrobic funkcje.
                 kp = sift.detect(roir, None)
                 kp, desc = sift.compute(roir, kp)
                 if desc is not None:
@@ -136,6 +158,7 @@ def learn(data):
                 kp, desc = sift.compute(roil, kp)
                 if desc is not None:
                     bow.add(desc)
+                # TODO Przydalby sie komentarz.
                 expandedRoi = img[(int(box["ymin"])-10):(int(box["ymax"])+10), (int(box["xmin"])-10):(int(box["xmax"])+10)]
                 try:
                     kp = sift.detect(expandedRoi, None)

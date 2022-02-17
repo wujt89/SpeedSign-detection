@@ -248,7 +248,7 @@ def predictSinglePhotoClassify(rf, desc):
     if int(label) > 0:
         print("speedlimit")
     else:
-        print("others")
+        print("other")
 
 
 def predictDetect(rf, data):

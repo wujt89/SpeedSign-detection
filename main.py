@@ -11,27 +11,6 @@ from sklearn import metrics
 import pandas
 from getpass import getpass
 
-# TODO Jakość kodu i raport (3/4)
-
-
-# TODO Skuteczność klasyfikacji 0.949 (4/4)
-# TODO [0.00, 0.50) - 0.0
-# TODO [0.50, 0.55) - 0.5
-# TODO [0.55, 0.60) - 1.0
-# TODO [0.60, 0.65) - 1.5
-# TODO [0.65, 0.70) - 2.0
-# TODO [0.70, 0.75) - 2.5
-# TODO [0.75, 0.80) - 3.0
-# TODO [0.80, 0.85) - 3.5
-# TODO [0.85, 1.00) - 4.0
-
-
-# TODO Skuteczność detekcji mAP = 0.554 (6/6) (2/2)
-
-# TODO max(6, 4+2) = 6
-
-# TODO Poprawki po terminie. (-1)
-
 
 def checkCircle(x1, y1, x2, y2, r1, r2):
     distSq = (((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2))) ** (.5)

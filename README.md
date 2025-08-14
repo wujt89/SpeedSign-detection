@@ -1,43 +1,90 @@
-# SpeedSign-detection
-Raport z wykonanego zadania chiałbym przedstawić jako opis wszystkich funkcji oraz chronologię z jaką są one odpowiednio wywoływane. Ograniczę się do bardziej ogólnych opisów funkcji (nie będę wchodził w szczegóły co robi każda zmienna z osobna itp.), aby większą uwage skupić na procesie działania algorytmu
-1. checkCircle():
-    Funkcja służy do usuwania kółek, które znalezione zostały przez algorytm poszukiwania okręgów w sposób nieprawidłowy. Nie chodzi tutaj o błędne zaznaczenie         samego okręgu, natomiast o pozycje tego okręgu. Funkcja sprawdza, czy dany okrąg nie znajduję się wewnątrz innego okręgu. Jeżeli ten warunek zostaje spełniony       okrąg jest wyrzucany ze zbioru okręgów znelezionych.
-2. loadAndCirclePhoto():
-    Jako argument przyjomwany jest obraz na którym maja być znalezione okręgi. Wykorzystywana jest do tego funkcja z biblioteki "cv2" HoughCircles. Korzytsam z         metody cv2.HOUGH_GRADIENT_ALT, ponieważ uzyskałem dzięki niej zdecydowanie lepsze wyniki. Wszystkie znalezione okręgi (również te błędne o którym była mowa w       poprzednim punkcie) są nastepnie przekazywane do funkcji checkAndDrawRedCircles().
-3. CheckAndDrawRedCircles():
-    Pierwszą rzeczą jaką robi ta funkcja to przefiltrowanie kółek za pomocą funkcji z punktu pierwszego. Następnie z przefiltorwane kólka zamieniane są na kwadraty,     a wartości początkowe oraz końcowe tych kwadratów zapisywane są w zmiennej boxes która jest wartością zwracaną.
-4. load():
-    Jak sama nazwa wskazuję służy ona do załadowania wszystkich interesujących nas informacji na temat obiektu z pliku xml, który jest podany jako argument. Oprócz     tego w przypadku gdy obraz został zaznaczony jako zły, losowane jest inne dowolne miejsce na obrazie, aby algorytm nauczył się również, że drzewa czy niebo to       też nie to czego szukamy.
-5. learn():
-    Funkcja uczenia się. Uczy się na podstawie wycinków wyznaczonych przez wartości boxów w pliku xml. Oprócz tego w przypadkuznalezienia znaku który jest dobry,       jest on losowo przycinany tak, aby zachowane było przynajmniej 50% jego oryginalnej powierzchni. Dzięki temu spełniona zostanie zasada IOU.
-6. extractSinglePhotoClassify():
-    Na podtsawie tej funkcji tłumaczony jest słownik na deskryptor na podstawie podanego zdjęcia dla pojedynczego obrazu.
-7. extractDetect():
-    Funkcja robi to samo co powyższa jednakże dla całego zbioru zdjęć podawanych dla 'detect'.
-8. train():
-    Funckja służy do nauczania modelu.
-9. predictSinglePhotoClassify():
-    Funkcja służaca do testowania modelu dla pojedynczego zdjęcia w opcji 'classify'. Zwracany jest przewidywany label, na podstawie deksryptora danego boxa.
-10. predictDetect():
-    Funkcja robi to samo co powyższa jednakże dla całego zbioru w opcji 'detect'.
-11. evaluate():
-    służy do zwracania wyniku klasywikacji, jeżeli 'label_pred' został wyznaczony jako '1', wtedy na konsole wypisywany jest 'speedlimit' jeżeli '0' to 'others'.
-12. evaluateDetect():
-    służy do zwracania wyniku detekcji. Na konsole wypiuswyane są podane w instrukcji dane w zależności od wyniku detekcji.
-13. extract():
-    Funkcja robi to samo co extractSingleClassify jednakże dla całego zbioru treningowego.
-    
-ALGORYTM:
-#1 załadowanie danych treningowych oraz testowych
+### Speed Limit Sign Detection
 
-#2 Uczenie modelu na podstawie danych treningowych
+A classical computer-vision pipeline for detecting and classifying speed‑limit traffic signs. The system combines circular proposal generation (Hough transform) with local feature descriptors (SIFT) aggregated via a Bag‑of‑Visual‑Words (BoVW) vocabulary and a Random Forest classifier.
 
-#3 Wyciąganie danych ze słownika dla zbioru treningowego
+### Key capabilities
+- **Circle proposal filtering**: Removes nested/duplicate circle proposals to yield stable regions of interest.
+- **BoVW vocabulary learning**: Builds a SIFT vocabulary from positive examples and saves it to `voc.npy`.
+- **Descriptor extraction**: Computes BoVW descriptors for candidate boxes in both training and inference.
+- **Classification**: Trains a `RandomForestClassifier` to distinguish `speedlimit` vs `other`.
+- **Two modes of operation**:
+  - **classify**: Classify user-provided regions in test images.
+  - **detect**: Automatically propose circular regions via Hough Circles and classify them.
 
-#4 Trenowanie modelu
+### Requirements
+- Python 3.8+
+- Packages:
+  - `opencv-contrib-python` (SIFT and BoW modules)
+  - `numpy`
+  - `scikit-learn`
+  - `matplotlib`
+  - `pandas`
 
-#5 Na konsoli pokazuję sie informacja, ≥że trening i uczenie przebiegło w sposób prawidłowy, i oczekiwane jest wprowadzenie przez użytkownika wartości 'classify' lub 'detect'.
+Install in a fresh environment:
 
-#6 W przypadku wprowadzenia 'classify' przebiega proces klasyfikacji oczekujemy na wprowadzenie przez użytkownika ilości plików jakie chcemy sprawdzić, następnie nazwy pierwszego pliku, następnie ilości pól jakie chcemy sprawdzić na danym obrazie, następnie współrzędne pierwszego pola. I tak w pętli.
+```bash
+pip install opencv-contrib-python numpy scikit-learn matplotlib pandas
+```
 
-#7 w przypoadku wpisania 'detect' przebiega proces detekcji na podstawie obrazów w podanym w instukcji folderze.
+### Expected dataset layout
+This project expects training and test data to be located one directory above the project root:
+
+```text
+../train/
+  images/               # training images
+  annotations/          # PASCAL VOC-style XML files
+../test/
+  images/               # test images
+  annotations/          # PASCAL VOC-style XML files
+```
+
+Each XML annotation should contain object entries with `name` equal to `speedlimit` for positive instances and bounding box coordinates (`xmin`, `ymin`, `xmax`, `ymax`).
+
+### Running
+From the project directory:
+
+```bash
+python main.py
+```
+
+The script will:
+1) Load annotations for `train` and `test` sets.
+2) Learn a SIFT BoVW vocabulary from positive regions and save it to `voc.npy`.
+3) Extract descriptors for the training set and train a Random Forest classifier.
+4) Prompt for an operating mode: `classify` or `detect`.
+
+### Interactive usage
+- **classify** mode:
+  1) Enter number of files to process.
+  2) For each file, enter the image filename (from `../test/images/`).
+  3) Enter how many regions you want to classify within that image.
+  4) For each region, provide coordinates as space‑separated integers: `xmin xmax ymin ymax`.
+  5) The program prints `speedlimit` or `other` for each region.
+
+- **detect** mode:
+  - The script runs circle detection on each test image using `cv2.HoughCircles` with `cv2.HOUGH_GRADIENT_ALT`, converts circles to bounding boxes, extracts BoVW descriptors, classifies them, and prints:
+    - image filename
+    - number of detections predicted as `speedlimit`
+    - bounding box coordinates for each detection (`xmin xmax ymin ymax`)
+
+### Implementation overview (functions)
+- `checkCircle(x1, y1, x2, y2, r1, r2)`: Helper to suppress circles fully contained within another circle.
+- `loadAndCirclePhoto(path)`: Reads an image, runs Hough Circles, returns candidate boxes.
+- `checkAndDrawRedCircles(circles, actual_img, is_empty)`: Filters circle proposals and converts them to bounding boxes.
+- `load(trainOrTest, xmlFolder)`: Loads image names and boxes from XML; also samples random negative boxes.
+- `learn(data)`: Trains a BoVW vocabulary from positive regions (and random crops) and saves `voc.npy`.
+- `extractSinglePhotoClassify(name, coordinates)`: Extracts a BoVW descriptor for a single region in a single test image.
+- `extractDetect(data, path)`: For each test image, generates circle proposals and extracts descriptors for each box.
+- `extract(data, path)`: Extracts descriptors for all annotated boxes in the dataset.
+- `train(data)`: Trains a `RandomForestClassifier` on BoVW descriptors.
+- `predictSinglePhotoClassify(rf, desc)`: Prints a label prediction for a single region.
+- `predictDetect(rf, data)`: Prints detections for each test image and returns enriched metadata.
+- `predictUniversal(rf, data)`: Adds predictions for all annotated boxes (utility).
+- `evaluate(data)`: Prints overall classification accuracy given predicted vs. true labels.
+- `evaluateDetect(data)`: Utility for drawing predicted boxes; can be adapted for further evaluation.
+
+### Notes
+- SIFT and BoW functionality require `opencv-contrib-python`.
+- The BoVW vocabulary is saved as `voc.npy` in the project root and reused by extraction functions.
+- Hough Circle parameters (e.g., `param1`, `param2`, `minRadius`, `maxRadius`) are tuned empirically and may need adjustment for other datasets.
+
